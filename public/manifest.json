@@ -3,7 +3,7 @@
     "short_name": "KJ Chat!",
     "start_url": "/index.html",
     "orientation": "portrait",
-    "display": "standalone",
+    "display": "minimal-ui",
     "background_color": "#CFD8DC",
     "theme_color": "#CDDC39",
     "icons": [

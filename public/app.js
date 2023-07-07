@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getFirestore, collection, setDoc, deleteDoc, getDocs, doc, onSnapshot, query, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { getFirestore, collection, setDoc, deleteDoc, getDocs, enableNetwork, doc, onSnapshot, query, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/serviceworker.js');
@@ -27,22 +27,41 @@ enableIndexedDbPersistence(db)
        console.log(err);
     })
 
-const getFirestoreData = async () => {
-    const querySnapshot = await getDocs(collection(db, localStorage.getItem("username")));
-    if (!querySnapshot.empty) {
-        querySnapshot.forEach((doc) => {
-            // console.log(doc.id, doc.data());
-            // console.log(querySnapshot.size);
-            sendMessage(doc.data());
-        })
-        for (let i = 0; i < querySnapshot.size; i++) {
-            await deleteDoc(doc(db, localStorage.getItem("username"), i.toString()));
-        }
-    } 
-}
+// const getFirestoreData = async () => {
+//     const querySnapshot = await getDocs(collection(db, localStorage.getItem("username")));
+//     if (!querySnapshot.empty) {
+//         querySnapshot.forEach((doc) => {
+//             // console.log(doc.id, doc.data());
+//             // console.log(querySnapshot.size);
+//             sendMessage(doc.data());
+//         })
+//         for (let i = 0; i < querySnapshot.size; i++) {
+//             await deleteDoc(doc(db, localStorage.getItem("username"), i.toString()));
+//         }
+//     } 
+// }
 
-if (navigator.onLine) {
-    getFirestoreData();
+// if (navigator.onLine) {
+//     getFirestoreData();
+// }
+if (localStorage.getItem("username")) {
+    const q = query(collection(db, localStorage.getItem("username")));
+    onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach(async change => {
+            if (change.type === 'added') {
+                await enableNetwork(db);
+                if (navigator.onLine) {
+                    console.log("connected!")
+                    sendMessage(change.doc.data());
+                    if (!snapshot.metadata.hasPendingWrites) {
+                        for (let i = 0; i < snapshot.size; i++) {
+                            await deleteDoc(doc(db, localStorage.getItem("username"), i.toString()));
+                        }
+                    }
+                }
+            }
+        })
+    });
 }
 
 AOS.init({

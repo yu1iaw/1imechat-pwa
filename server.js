@@ -36,8 +36,8 @@ io.on('connection', (socket) => {
     })
 })
 
-http.listen(4000, () => {
-    console.log(`listening on port http://localhost:4000`);
+http.listen(process.env.PORT || 3000, () => {
+    console.log(`listening on port http://localhost:3000`);
 })
 
 // terminal command: 
