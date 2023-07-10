@@ -12,21 +12,33 @@ app.get('/', (req, res) => {
 })
 
 io.on('connection', (socket) => {
-    console.log('a user connected');
+    console.log('a user connected', socket.id);
+    console.log(socket.handshake.query.login);
 
-    socket.on('disconnect', () => {
-        console.log('a user disconnected');
-        const disconnectedUser = authMessages.find(user => user.id === socket.id);
-        if (disconnectedUser) {
-            io.emit('message', {
-                author: disconnectedUser.author,
-                date: new Date(),
-                type: "logout"
-            })
-
-            const disconnectedUserIndex = authMessages.findIndex(user => user.id === socket.id);
-            authMessages.splice(disconnectedUserIndex, 1);
+    if (socket.handshake.query.login) {
+        const reconnectedUser = authMessages.find(user => user.author === socket.handshake.query.login);
+        if (reconnectedUser) {
+            reconnectedUser.id = socket.id;
+            console.log(authMessages);
         }
+    }
+
+    socket.on('disconnect', (reason) => {
+        console.log('a user disconnected', reason);
+        if (reason === 'transport close') {
+            const disconnectedUser = authMessages.find(user => user.id === socket.id);
+            if (disconnectedUser) {
+                io.emit('message', {
+                    author: disconnectedUser.author,
+                    date: new Date(),
+                    type: "logout"
+                })  
+
+                const disconnectedUserIndex = authMessages.findIndex(user => user.id === socket.id);
+                disconnectedUserIndex > -1 && authMessages.splice(disconnectedUserIndex, 1);  
+                console.log(authMessages)
+            }
+        } 
     })
 
     socket.on('message', (message) => {
