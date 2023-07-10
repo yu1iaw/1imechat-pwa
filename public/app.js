@@ -46,18 +46,13 @@ enableIndexedDbPersistence(db)
 // }
 if (localStorage.getItem("username")) {
     const q = query(collection(db, localStorage.getItem("username")));
-    onSnapshot(q, (snapshot) => {
+    onSnapshot(q, (snapshot) => {  
         snapshot.docChanges().forEach(async change => {
-            if (change.type === 'added') {
-                await enableNetwork(db);
-                if (navigator.onLine) {
-                    console.log("connected!")
-                    sendMessage(change.doc.data());
-                    if (!snapshot.metadata.hasPendingWrites) {
-                        for (let i = 0; i < snapshot.size; i++) {
-                            await deleteDoc(doc(db, localStorage.getItem("username"), i.toString()));
-                        }
-                    }
+            if (change.type === 'added' && change.doc.metadata.hasPendingWrites) {
+                sendMessage(change.doc.data());
+            } else if (change.type === 'added' && !change.doc.metadata.hasPendingWrites) {
+                for (let i = 0; i < snapshot.size; i++) {
+                    await deleteDoc(doc(db, localStorage.getItem("username"), i.toString()));
                 }
             }
         })
@@ -86,8 +81,16 @@ const loginBtn = document.querySelector('#loginBtn');
 
 const audio = new Audio('little-boy-saying-hiya.wav');
 let messages = localStorage.getItem('messages') ? JSON.parse(localStorage.getItem('messages')) : []; // { author, date, content, type }
-var socket = io();
-// {closeOnBeforeunload: false}
+var socket = io({
+    query: {
+      login: username
+    }
+});
+
+socket.io.on("reconnect_attempt", () => {
+    socket.io.opts.query.login = username;
+});
+
 
 socket.on('message', (message) => {
     // console.log(message);
@@ -166,6 +169,7 @@ loginBtn.addEventListener('click', async (e) => {
         author: username,
         date: new Date(),
         type: messagesTypes.LOGIN,
+        // app: window.matchMedia('(display-mode: minimal-ui)').matches,
         id: socket.id
     });
 
