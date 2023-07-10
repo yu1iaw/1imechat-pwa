@@ -27,32 +27,28 @@ enableIndexedDbPersistence(db)
        console.log(err);
     })
 
-// const getFirestoreData = async () => {
-//     const querySnapshot = await getDocs(collection(db, localStorage.getItem("username")));
-//     if (!querySnapshot.empty) {
-//         querySnapshot.forEach((doc) => {
-//             // console.log(doc.id, doc.data());
-//             // console.log(querySnapshot.size);
-//             sendMessage(doc.data());
-//         })
-//         for (let i = 0; i < querySnapshot.size; i++) {
-//             await deleteDoc(doc(db, localStorage.getItem("username"), i.toString()));
-//         }
-//     } 
-// }
 
-// if (navigator.onLine) {
-//     getFirestoreData();
-// }
 if (localStorage.getItem("username")) {
     const q = query(collection(db, localStorage.getItem("username")));
     onSnapshot(q, (snapshot) => {  
         snapshot.docChanges().forEach(async change => {
-            if (change.type === 'added' && change.doc.metadata.hasPendingWrites) {
-                sendMessage(change.doc.data());
-            } else if (change.type === 'added' && !change.doc.metadata.hasPendingWrites) {
-                for (let i = 0; i < snapshot.size; i++) {
-                    await deleteDoc(doc(db, localStorage.getItem("username"), i.toString()));
+            // if (change.type === 'added' && change.doc.metadata.hasPendingWrites) {
+            //     sendMessage(change.doc.data());
+            // } else if (change.type === 'added' && !change.doc.metadata.hasPendingWrites) {
+            //     for (let i = 0; i < snapshot.size; i++) {
+            //         await deleteDoc(doc(db, localStorage.getItem("username"), i.toString()));
+            //     }
+            // }
+
+            if (change.type === 'added') {
+                const messages = JSON.parse(localStorage.getItem('messages'));
+                const existingMessages = messages.filter(item => item.content === change.doc.data().content && item.author === change.doc.data().author && item.date === change.doc.data().date);
+                if (existingMessages.length) {
+                    for (let i = 0; i < snapshot.size; i++) {
+                        await deleteDoc(doc(db, localStorage.getItem("username"), i.toString()));
+                    }
+                } else {
+                    sendMessage(change.doc.data());
                 }
             }
         })
