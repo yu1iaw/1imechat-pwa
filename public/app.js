@@ -165,7 +165,6 @@ loginBtn.addEventListener('click', async (e) => {
         author: username,
         date: new Date(),
         type: messagesTypes.LOGIN,
-        // app: window.matchMedia('(display-mode: minimal-ui)').matches,
         id: socket.id
     });
 
@@ -198,11 +197,15 @@ sendBtn.addEventListener('click', async (e) => {
         firestoreMessages.forEach(async (message, i) => {
             await setDoc(doc(db, message.author, i.toString()), {...message});
         })
-        messages.push(message);
+        const info = {
+            author: 'offline mode',
+            date: dateString,
+            content: `The message «${messagesInput.value.slice(0, 9)}...» was written by ${username || localStorage.getItem("username")} and saved.`
+        }
+        messages.push(info);
         displayMessages();
-       
     }
-
+    
     messagesInput.value = '';
 })
 
@@ -216,7 +219,7 @@ const resetStorage = () => {
 
     const date = messages[0].date;
  
-    if (new Date() - new Date(date) >= 432000000) {
+    if (new Date() - new Date(date.split('/').reverse().join('-')) >= 432000000) {
         localStorage.removeItem("messages");
         messages = [];
     }
@@ -239,7 +242,7 @@ const getNotification = (message) => {
 let timeoutId;
 
 document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden" && username) {
+    if (!window.matchMedia('(display-mode: minimal-ui)').matches && document.visibilityState === "hidden" && username) {
         timeoutId = setTimeout(() => {
             location.reload();
         }, 180000)
