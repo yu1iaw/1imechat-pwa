@@ -1,6 +1,6 @@
 {
-    "name": "knee-jerk chat",
-    "short_name": "KJ Chat!",
+    "name": "lime chat",
+    "short_name": "lime chat",
     "start_url": "/index.html",
     "orientation": "portrait",
     "display": "minimal-ui",

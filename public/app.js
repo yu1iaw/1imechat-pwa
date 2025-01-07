@@ -1,59 +1,43 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getFirestore, collection, setDoc, deleteDoc, getDocs, enableNetwork, doc, onSnapshot, query, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { addDoc, collection, deleteDoc, doc, getDocs, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/serviceworker.js');
 }
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDkaVyzXvH7dYAsigIp80udMg8iuY9-370",
-  authDomain: "ninja--pwa.firebaseapp.com",
-  projectId: "ninja--pwa",
-  storageBucket: "ninja--pwa.appspot.com",
-  messagingSenderId: "481871428710",
-  appId: "1:481871428710:web:88461683279f3725e101a7",
-  measurementId: "G-5J9E7QV72D"
+    apiKey: CONFIG.FIRESTORE_API_KEY,
+    authDomain: CONFIG.FIRESTORE_AUTH_DOMAIN,
+    projectId: CONFIG.FIRESTORE_PROJECT_ID,
+    storageBucket: CONFIG.FIRESTORE_STORAGE_BUCKET,
+    messagingSenderId: CONFIG.FIRESTORE_MESSAGING_SENDER_ID,
+    appId: CONFIG.FIRESTORE_APP_ID,
+    measurementId: CONFIG.FIRESTORE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
 
-enableIndexedDbPersistence(db)
-    .then(() => {
+const sendStoredMessages = async () => {
+    if (!localStorage.getItem("username")) return;
 
+    const messagesSnapshot = await getDocs(collection(db, localStorage.getItem("username")));
+    const messages = JSON.parse(localStorage.getItem('messages'));
+    messagesSnapshot.forEach(async d => {
+        if (messages.some(item => item.content === d.data().content &&
+            item.author === d.data().author &&
+            item.date === d.data().date)) {
+            await deleteDoc(doc(db, localStorage.getItem("username"), d.id));
+        } else {
+            sendMessage(d.data());
+        }
     })
-    .catch(err => {
-       console.log(err);
-    })
-
-
-if (localStorage.getItem("username")) {
-    const q = query(collection(db, localStorage.getItem("username")));
-    onSnapshot(q, (snapshot) => {  
-        snapshot.docChanges().forEach(async change => {
-            // if (change.type === 'added' && change.doc.metadata.hasPendingWrites) {
-            //     sendMessage(change.doc.data());
-            // } else if (change.type === 'added' && !change.doc.metadata.hasPendingWrites) {
-            //     for (let i = 0; i < snapshot.size; i++) {
-            //         await deleteDoc(doc(db, localStorage.getItem("username"), i.toString()));
-            //     }
-            // }
-
-            if (change.type === 'added') {
-                const messages = JSON.parse(localStorage.getItem('messages'));
-                const existingMessages = messages.filter(item => item.content === change.doc.data().content && item.author === change.doc.data().author && item.date === change.doc.data().date);
-                if (existingMessages.length) {
-                    for (let i = 0; i < snapshot.size; i++) {
-                        await deleteDoc(doc(db, localStorage.getItem("username"), i.toString()));
-                    }
-                } else {
-                    sendMessage(change.doc.data());
-                }
-            }
-        })
-    });
 }
+
+sendStoredMessages();
+
 
 AOS.init({
     duration: 1000,
@@ -61,54 +45,57 @@ AOS.init({
 });
 
 const messagesTypes = { LEFT: 'left', RIGHT: 'right', LOGIN: 'login', LOGOUT: 'logout' };
-const firestoreMessages = [];
+let username = '';
+const audio = new Audio('happy-pop.mp3');
+let messages = localStorage.getItem('messages') ? JSON.parse(localStorage.getItem('messages')) : []; // { author, date, content, type }
 
 // Chat Stuff
+const headerInfo = document.querySelector("header .info");
 const chatContainer = document.querySelector('#chat');
 const messagesList = document.querySelector('#messagesList');
 const messageForm = document.querySelector('#messageForm');
 const messagesInput = document.querySelector('#messageInput');
 const sendBtn = document.querySelector('#sendBtn');
 // Login Stuff
-let username = '';
 const loginContainer = document.querySelector('#login');
 const usernameInput = document.querySelector('#usernameInput');
 const loginBtn = document.querySelector('#loginBtn');
 
-const audio = new Audio('little-boy-saying-hiya.wav');
-let messages = localStorage.getItem('messages') ? JSON.parse(localStorage.getItem('messages')) : []; // { author, date, content, type }
+
 var socket = io({
-    query: {
-      login: username
-    }
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 3000
 });
-
-socket.io.on("reconnect_attempt", () => {
-    socket.io.opts.query.login = username;
-});
-
 
 socket.on('message', (message) => {
-    // console.log(message);
+    headerInfo.children[0].textContent = `In the room: ${message.infoTotal}`;
+
     if (message.type !== messagesTypes.LOGIN && message.type !== messagesTypes.LOGOUT) {
         if (message.author === username || message.author === localStorage.getItem("username")) {
             message.type = messagesTypes.RIGHT;
         } else {
             message.type = messagesTypes.LEFT;
-            let promise = audio.play();
-            if (promise !== undefined) {
-                promise.then(_ => promise)
-                .catch(_ => {
-                    new Notification('KNEE-JERK CHAT', {
+            audio.play();
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    new Notification('LIME CHAT', {
                         body: `${message.author} sent a message...`,
                         icon: 'icons/icons8-chat-32.png',
-                        tag: "trigger notification"
+                        // tag: "trigger notification"
                     })
-                });
-            }
+                }
+            })
+
+            const emailForm = {
+                name: message.author,
+                email: "email",
+                message: message.content
+            };
+            emailjs.send(CONFIG.EMAILJS_SERVICE_TOKEN, CONFIG.EMAILJS_TEMPLATE_TOKEN, emailForm, { publicKey: CONFIG.EMAILJS_PUBLIC_KEY })
+                .catch(e => console.log(e))
         }
     } else {
-        if (message.author !== username ) {
+        if (message.author !== username) {
             getNotification(message);
         }
     }
@@ -131,11 +118,13 @@ const createMessageHTML = (message) => {
             <p class="secondary-text text-center mb-2">${message.author} has left the chat...</p>
         `;
     }
-    
+
     return `
         <div class="message ${message.type === messagesTypes.LEFT ? 'message-left' : 'message-right'}">
             <div class="message-details flex">
-                <p class="message-author">${message.type === messagesTypes.RIGHT ? '' : message.author}</p>
+                <p class="message-author">
+                    ${message.type === messagesTypes.RIGHT ? '<span>you</span>' : message.author}
+                </p>
                 <p class="message-date">${message.date}</p>
             </div>
             <p class="message-content">${message.content}</p>
@@ -171,7 +160,7 @@ loginBtn.addEventListener('click', async (e) => {
     loginContainer.classList.add('hidden');
     messageForm.classList.remove('hidden');
     chatContainer.classList.remove('hidden');
-
+    headerInfo.classList.remove('invisible');
 })
 
 sendBtn.addEventListener('click', async (e) => {
@@ -190,22 +179,26 @@ sendBtn.addEventListener('click', async (e) => {
         content: messagesInput.value
     };
 
-    if (navigator.onLine) {
-        sendMessage(message);
-    } else {
-        firestoreMessages.push(message);
-        firestoreMessages.forEach(async (message, i) => {
-            await setDoc(doc(db, message.author, i.toString()), {...message});
-        })
-        const info = {
-            author: 'offline mode',
-            date: dateString,
-            content: `The message «${messagesInput.value.slice(0, 9)}...» was written by ${username || localStorage.getItem("username")} and saved.`
-        }
-        messages.push(info);
-        displayMessages();
+    if (!navigator.onLine) {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <div class="message message-right opacity">
+                <div class="message-details flex">
+                    <p class="message-author"><span>you (offline)</span></p>
+                    <p class="message-date">${message.date}</p>
+                </div>
+                <p class="message-content">${message.content}</p>
+            </div>
+        `;
+        messagesList.append(div);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        await addDoc(collection(db, message.author), {
+            ...message
+        });
     }
-    
+
+    sendMessage(message);
     messagesInput.value = '';
 })
 
@@ -218,7 +211,7 @@ const resetStorage = () => {
     if (!messages.length) return;
 
     const date = messages[0].date;
- 
+
     if (new Date() - new Date(date.split('/').reverse().join('-')) >= 432000000) {
         localStorage.removeItem("messages");
         messages = [];
@@ -231,9 +224,10 @@ resetStorage()
 const getNotification = (message) => {
     Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
-            new Notification('KNEE-JERK CHAT', {
+            new Notification('LIME CHAT', {
                 body: `${message.author} has ${message.type === messagesTypes.LOGIN ? 'joined' : 'left'} the chat...`,
-                icon: 'icons/icons8-chat-32.png'
+                icon: 'icons/icons8-chat-32.png',
+                // tag: "action"
             })
         }
     })
