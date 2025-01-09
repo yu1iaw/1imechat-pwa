@@ -208,6 +208,10 @@ span {
     border-radius: 10px;
 }
 
+.message p {
+    word-wrap: break-word;
+}
+
 .message-right {
     background-color: var(--accent-color);
     margin-left: 20%;

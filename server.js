@@ -1,20 +1,35 @@
-import { serve } from '@hono/node-server';
-import { serveStatic } from '@hono/node-server/serve-static';
-import { config } from 'dotenv';
-import { Hono } from 'hono';
+import express from 'express';
+import { createServer } from "http";
+import path from 'path';
 import { Server } from 'socket.io';
+import { fileURLToPath } from 'url';
+import { createServer as createViteServer } from 'vite';
 
-config();
 
 const authMessages = [];
-const app = new Hono();
+const app = express();
+const server = createServer(app);
+const isDev = process.env.NODE_ENV !== "production";
+const __fileName = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__fileName);
 
-const server = serve({
-    fetch: app.fetch,
-    port: process.env.PORT || 5050
+
+(async () => {
+    if (isDev) {
+        const vite = await createViteServer({ server: { middlewareMode: true } });
+        app.use(vite.middlewares);
+    } else {
+        const staticPath = path.resolve(__dirname, 'dist');
+        app.use(express.static(staticPath));
+        app.get('/', (req, res) => {
+            res.sendFile(path.resolve(staticPath, 'index.html'));
+        })
+    }
+})()
+
+app.get('/api', (req, res) => {
+    res.json({ hello: 1 })
 })
-
-app.use('*', serveStatic({ root: "./public" }));
 
 const io = new Server(server, {
     pingInterval: 2000,
@@ -27,13 +42,14 @@ const io = new Server(server, {
 
 
 io.on('connection', (socket) => {
-    console.log('a user connected', socket.id);
+    // console.log('a user connected', socket.id);
+
     if (socket.recovered) {
-        console.log('SOCKET RECOVERED: ', socket.id);
+        // console.log('recovered: ', socket.id);
     }
 
     socket.on('disconnect', (reason) => {
-        console.log('a user disconnected', reason);
+        // console.log('a user disconnected', reason);
         if (reason === 'transport close') {
             const disconnectedUser = authMessages.find(user => user.id === socket.id);
             if (disconnectedUser) {
@@ -42,12 +58,12 @@ io.on('connection', (socket) => {
                     date: new Date(),
                     type: "logout",
                     infoTotal: authMessages.length - 1
-                })  
+                })
 
                 const disconnectedUserIndex = authMessages.findIndex(user => user.id === socket.id);
-                disconnectedUserIndex > -1 && authMessages.splice(disconnectedUserIndex, 1);  
+                disconnectedUserIndex > -1 && authMessages.splice(disconnectedUserIndex, 1);
             }
-        } 
+        }
     })
 
     socket.on('message', (message) => {
@@ -57,8 +73,6 @@ io.on('connection', (socket) => {
     })
 })
 
-console.log('server running on http://localhost:5050');
 
-
-// terminal command: 
-//   node server.js
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => console.log(`server running on port:${PORT}`))

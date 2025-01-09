@@ -1,20 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#CDDC39">
-    <link rel="stylesheet" href="app.css">
+    <link rel="stylesheet" href="/src/app.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Gasoek+One&family=Righteous&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+    <!-- <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" /> -->
+    <!-- <script defer src="https://unpkg.com/aos@next/dist/aos.js"></script> -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <title>lime chat</title>
-	<link rel="icon" type="image/x-icon" href="/icons/icons8-chat-32.png">
+    <link rel="icon" type="image/x-icon" href="/icons/icons8-chat-32.png">
     <link rel="apple-touch-icon" href="/icons/icons8-chat-96.png" />
-    <link rel="manifest" href="/manifest.json">
+    <link rel="mask-icon" href="/vite.svg" color="#FFFFFF">
 </head>
+
 <body>
     <div id="appContainer" class="flex-column">
         <header>
@@ -26,7 +31,7 @@
                     <h1>lime chat</h1>
                     <img src="/icons/lime_icon.png" width="32" height="32" alt="lime logo" />
                 </div>
-            </div>    
+            </div>
         </header>
         <div id="mainContent" class="container flex-grow-1 flex-column">
             <form id="messageForm" class="hidden flex mb-2">
@@ -42,15 +47,12 @@
             </section>
             <section id="chat" class="hidden flex-column flex-grow-1">
                 <div id="messagesList" class="flex-grow-1">
-                    
+
                 </div>
             </section>
         </div>
     </div>
-    <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.js"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-    <script src="config.js"></script>
-    <script src="app.js" type="module"></script>
+    <script src="/src/app.js" type="module"></script>
 </body>
+
 </html>

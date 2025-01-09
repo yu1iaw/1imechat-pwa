@@ -1,26 +1,16 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { addDoc, collection, deleteDoc, doc, getDocs, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import Aos from "aos";
+import 'aos/dist/aos.css';
+import { addDoc, collection, deleteDoc, doc, getDocs } from "firebase/firestore";
+import { db } from "./firebase";
 
 
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/serviceworker.js');
-}
 
-const firebaseConfig = {
-    apiKey: CONFIG.FIRESTORE_API_KEY,
-    authDomain: CONFIG.FIRESTORE_AUTH_DOMAIN,
-    projectId: CONFIG.FIRESTORE_PROJECT_ID,
-    storageBucket: CONFIG.FIRESTORE_STORAGE_BUCKET,
-    messagingSenderId: CONFIG.FIRESTORE_MESSAGING_SENDER_ID,
-    appId: CONFIG.FIRESTORE_APP_ID,
-    measurementId: CONFIG.FIRESTORE_MEASUREMENT_ID
-};
+Aos.init({
+    duration: 1000,
+    offset: 100
+});
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
-
-const sendStoredMessages = async () => {
+const sendStoredMessages = async () => {    
     if (!localStorage.getItem("username")) return;
 
     const messagesSnapshot = await getDocs(collection(db, localStorage.getItem("username")));
@@ -37,12 +27,6 @@ const sendStoredMessages = async () => {
 }
 
 sendStoredMessages();
-
-
-AOS.init({
-    duration: 1000,
-    offset: 100
-});
 
 const messagesTypes = { LEFT: 'left', RIGHT: 'right', LOGIN: 'login', LOGOUT: 'logout' };
 let username = '';
@@ -62,10 +46,22 @@ const usernameInput = document.querySelector('#usernameInput');
 const loginBtn = document.querySelector('#loginBtn');
 
 
-var socket = io({
+var socket = io(/*import.meta.env.VITE_SOCKETIO_SERVER,*/{
     reconnectionDelay: 1000,
     reconnectionDelayMax: 3000
 });
+
+socket.on("connect", () => {
+    if (socket.recovered && username)  {
+        sendMessage({
+            author: username,
+            date: new Date(),
+            type: messagesTypes.LOGIN,
+            id: socket.id
+        });
+    }
+})
+
 
 socket.on('message', (message) => {
     headerInfo.children[0].textContent = `In the room: ${message.infoTotal}`;
@@ -91,7 +87,7 @@ socket.on('message', (message) => {
                 email: "email",
                 message: message.content
             };
-            emailjs.send(CONFIG.EMAILJS_SERVICE_TOKEN, CONFIG.EMAILJS_TEMPLATE_TOKEN, emailForm, { publicKey: CONFIG.EMAILJS_PUBLIC_KEY })
+            emailjs.send(import.meta.env.VITE_EMAILJS_SERVICE_TOKEN, import.meta.env.VITE_EMAILJS_TEMPLATE_TOKEN, emailForm, { publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY })
                 .catch(e => console.log(e))
         }
     } else {
