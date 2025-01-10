@@ -46,7 +46,7 @@ const usernameInput = document.querySelector('#usernameInput');
 const loginBtn = document.querySelector('#loginBtn');
 
 
-var socket = io(/*import.meta.env.VITE_SOCKETIO_SERVER,*/{
+var socket = io(/*import.meta.env.VITE_SOCKETIO_SERVER,*/'https://www.yu1iadev.website', {
     reconnectionDelay: 1000,
     reconnectionDelayMax: 3000
 });
