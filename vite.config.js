@@ -45,10 +45,33 @@ export default defineConfig({
                         urlPattern: 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.js',
                         handler: "NetworkFirst",
                         options: {
-                            cacheName: "socket.io",
+                            cacheName: "socket.io-cdn",
                             expiration: {
-                                maxEntries: 50,
+                                maxEntries: 1,
                                 maxAgeSeconds: 60*60*24
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200]
+                            }
+                        }
+                    },
+                    {
+                        urlPattern: 'https://cdnjs.cloudflare.com/ajax/libs/platform/1.3.6/platform.js',
+                        handler: "CacheFirst",
+                        options: {
+                            cacheName: "platform-cdn",
+                            expiration: {
+                                maxAgeSeconds: 60 * 60 * 24 * 365
+                            }
+                        }
+                    },
+                    {
+                        urlPattern: 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js',
+                        handler: "CacheFirst",
+                        options: {
+                            cacheName: "emailjs-cdn",
+                            expiration: {
+                                maxAgeSeconds: 60 * 60 * 24 * 365
                             }
                         }
                     },
@@ -58,8 +81,11 @@ export default defineConfig({
                         options: {
                             cacheName: "firebase-cdn",
                             expiration: {
-                                maxEntries: 10,
-                                maxAgeSeconds: 60*60*24*60
+                                maxEntries: 5,
+                                maxAgeSeconds: 60 * 60 * 24 * 60,
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200]
                             }
                         }
                     }

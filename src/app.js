@@ -1,8 +1,8 @@
 import Aos from "aos";
 import 'aos/dist/aos.css';
 import { addDoc, collection, deleteDoc, doc, getDocs } from "firebase/firestore";
+import platform from "platform";
 import { db } from "./firebase";
-
 
 
 Aos.init({
@@ -10,7 +10,7 @@ Aos.init({
     offset: 100
 });
 
-const sendStoredMessages = async () => {    
+const sendStoredMessages = async () => {
     if (!localStorage.getItem("username")) return;
 
     const messagesSnapshot = await getDocs(collection(db, localStorage.getItem("username")));
@@ -28,10 +28,21 @@ const sendStoredMessages = async () => {
 
 sendStoredMessages();
 
+const mobileDevice = platform.os.family === "Android" || platform.os.family === "iOS" || platform.os.family === "Windows Phone";
 const messagesTypes = { LEFT: 'left', RIGHT: 'right', LOGIN: 'login', LOGOUT: 'logout' };
-let username = '';
 const audio = new Audio('happy-pop.mp3');
+let username = '';
+let clientIp;
 let messages = localStorage.getItem('messages') ? JSON.parse(localStorage.getItem('messages')) : []; // { author, date, content, type }
+let isAdmin = false;
+
+fetch('https://www.yu1iadev.website/myip')
+    .then(res => res.json())
+    .then(data => {
+        clientIp = data.ip;
+        isAdmin = data.ip?.slice(0, 11) === import.meta.env.VITE_ADMIN_PUBLIC_IP.slice(0, 11);
+    })
+    .catch(e => console.log(e))
 
 // Chat Stuff
 const headerInfo = document.querySelector("header .info");
@@ -52,7 +63,7 @@ var socket = io(/*import.meta.env.VITE_SOCKETIO_SERVER,*/'https://www.yu1iadev.w
 });
 
 socket.on("connect", () => {
-    if (socket.recovered && username)  {
+    if (socket.recovered && username && !mobileDevice) {
         sendMessage({
             author: username,
             date: new Date(),
@@ -81,14 +92,6 @@ socket.on('message', (message) => {
                     })
                 }
             })
-
-            const emailForm = {
-                name: message.author,
-                email: "email",
-                message: message.content
-            };
-            emailjs.send(import.meta.env.VITE_EMAILJS_SERVICE_TOKEN, import.meta.env.VITE_EMAILJS_TEMPLATE_TOKEN, emailForm, { publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY })
-                .catch(e => console.log(e))
         }
     } else {
         if (message.author !== username) {
@@ -146,12 +149,23 @@ loginBtn.addEventListener('click', async (e) => {
     username = usernameInput.value;
     localStorage.setItem("username", username);
 
-    sendMessage({
+    const message = {
         author: username,
         date: new Date(),
         type: messagesTypes.LOGIN,
         id: socket.id
-    });
+    };
+    
+    if (mobileDevice && window.matchMedia('(display-mode: minimal-ui)').matches) {
+        const lastSocketId = localStorage.getItem('lastSocketId');
+        if (lastSocketId) {
+            message.pwaNewSession = true;
+            message.socketIdToRemove = lastSocketId;
+        }
+        localStorage.setItem('lastSocketId', socket.id);
+    }
+
+    sendMessage(message);
 
     loginContainer.classList.add('hidden');
     messageForm.classList.remove('hidden');
@@ -196,7 +210,18 @@ sendBtn.addEventListener('click', async (e) => {
 
     sendMessage(message);
     messagesInput.value = '';
+   
+    if (clientIp && !isAdmin) {
+        const emailForm = {
+            name: message.author,
+            email: "email",
+            message: message.content
+        };
+        emailjs.send(import.meta.env.VITE_EMAILJS_SERVICE_TOKEN, import.meta.env.VITE_EMAILJS_TEMPLATE_TOKEN, emailForm, { publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY })
+            .catch(e => console.log(e))
+    }
 })
+
 
 const sendMessage = (message) => {
     socket.emit('message', message);
@@ -208,7 +233,7 @@ const resetStorage = () => {
 
     const date = messages[0].date;
 
-    if (new Date() - new Date(date.split('/').reverse().join('-')) >= 432000000) {
+    if (new Date() - new Date(date.split('/').reverse().join('-')) >= 259200000) {
         localStorage.removeItem("messages");
         messages = [];
     }

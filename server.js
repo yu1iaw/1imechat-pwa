@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 
 
-const authMessages = [];
+let authMessages = [];
 const app = express();
 const server = createServer(app);
 const isDev = process.env.NODE_ENV !== "production";
@@ -27,13 +27,16 @@ const __dirname = path.dirname(__fileName);
     }
 })()
 
-app.get('/api', (req, res) => {
-    res.json({ hello: 1 })
+app.set('trust proxy', true);
+
+app.get('/myip', (req, res) => {
+    const ip = req.ip;
+    res.json({ ip });
 })
 
 const io = new Server(server, {
-    pingInterval: 2000,
-    pingTimeOut: 2000,
+    pingInterval: 20000,
+    pingTimeout: 10000,
     connectionStateRecovery: {
         maxDisconnectionDuration: 5 * 60 * 1000,
         skipMiddlewares: true
@@ -67,6 +70,9 @@ io.on('connection', (socket) => {
     })
 
     socket.on('message', (message) => {
+        if ('pwaNewSession' in message) {
+            authMessages = authMessages.filter(m => m.id !== message.socketIdToRemove);
+        }
         if ('id' in message) authMessages.push(message);
         const msg = { ...message, infoTotal: authMessages.length };
         io.emit('message', msg);
